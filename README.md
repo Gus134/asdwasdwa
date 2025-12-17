@@ -1,6 +1,6 @@
 -- =====================================================
--- DSYNC REALISTA (ESTILO ROUBE UM BRAINROT)
--- CONTROLE POR BOTÃO - CLIENTE
+-- DSYNC REAL (PERSONAGEM VISUALMENTE LAGADO)
+-- ESTILO ROUBE UM BRAINROT
 -- =====================================================
 
 local Players = game:GetService("Players")
@@ -12,17 +12,18 @@ local camera = workspace.CurrentCamera
 -- ================= ESTADO =================
 
 local dsyncAtivo = false
-local loopConexao = nil
+local clonePersonagem = nil
+local conexaoCamera = nil
 
 -- ================= UI =====================
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "DsyncBrainrotGUI"
+gui.Name = "DsyncLagGUI"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local botao = Instance.new("TextButton")
-botao.Size = UDim2.new(0, 160, 0, 36)
+botao.Size = UDim2.new(0, 170, 0, 36)
 botao.Position = UDim2.new(0, 18, 0.78, 0)
 botao.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 botao.BorderSizePixel = 0
@@ -38,68 +39,90 @@ corner.Parent = botao
 
 -- ================= FUNÇÕES =================
 
-local function getRoot()
+local function tornarInvisivel(char)
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.LocalTransparencyModifier = 1
+		end
+	end
+end
+
+local function tornarVisivel(char)
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.LocalTransparencyModifier = 0
+		end
+	end
+end
+
+local function criarClone(char)
+	local clone = char:Clone()
+	clone.Name = "DsyncClone"
+
+	for _, obj in ipairs(clone:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Anchored = true
+			obj.CanCollide = false
+		end
+		if obj:IsA("Humanoid") then
+			obj.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		end
+	end
+
+	clone.Parent = workspace
+	return clone
+end
+
+local function atualizarClone()
+	if not clonePersonagem then return end
+
 	local char = player.Character
-	if not char then return nil end
-	return char:FindFirstChild("HumanoidRootPart")
-end
+	if not char then return end
 
-local function cameraSnap()
-	local offset = Vector3.new(
-		math.random(-6, 6) * 0.03,
-		math.random(-6, 6) * 0.03,
-		0
-	)
-	camera.CFrame = camera.CFrame * CFrame.new(offset)
-end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local cloneRoot = clonePersonagem:FindFirstChild("HumanoidRootPart")
 
-local function personagemSnap()
-	local root = getRoot()
-	if not root then return end
-
-	local offset = Vector3.new(
-		math.random(-4, 4),
-		0,
-		math.random(-4, 4)
-	)
-
-	root.CFrame = root.CFrame * CFrame.new(offset)
-end
-
-local function microFreeze()
-	RunService.RenderStepped:Wait()
-	RunService.RenderStepped:Wait()
-end
-
--- ================= LOOP DSYNC =================
-
-local function iniciarDsync()
-	if loopConexao then return end
-
-	loopConexao = RunService.RenderStepped:Connect(function()
-		if not dsyncAtivo then return end
-
-		-- snaps irregulares
-		if math.random() < 0.25 then
-			cameraSnap()
+	if root and cloneRoot then
+		-- atraso proposital
+		if math.random() < 0.15 then
+			return
 		end
 
-		-- atraso falso
-		if math.random() < 0.12 then
-			microFreeze()
-		end
+		cloneRoot.CFrame = root.CFrame
+	end
+end
 
-		-- correção brusca de posição
-		if math.random() < 0.08 then
-			personagemSnap()
-		end
+-- ================= CONTROLE DSYNC =================
+
+local function ligarDsync()
+	local char = player.Character
+	if not char then return end
+
+	clonePersonagem = criarClone(char)
+	tornarInvisivel(char)
+
+	conexaoCamera = RunService.RenderStepped:Connect(function()
+		atualizarClone()
 	end)
+
+	camera.CameraSubject = clonePersonagem:FindFirstChild("Humanoid")
 end
 
-local function pararDsync()
-	if loopConexao then
-		loopConexao:Disconnect()
-		loopConexao = nil
+local function desligarDsync()
+	if conexaoCamera then
+		conexaoCamera:Disconnect()
+		conexaoCamera = nil
+	end
+
+	if clonePersonagem then
+		clonePersonagem:Destroy()
+		clonePersonagem = nil
+	end
+
+	local char = player.Character
+	if char then
+		tornarVisivel(char)
+		camera.CameraSubject = char:FindFirstChild("Humanoid")
 	end
 end
 
@@ -111,10 +134,10 @@ botao.MouseButton1Click:Connect(function()
 	if dsyncAtivo then
 		botao.Text = "DSYNC ON"
 		botao.BackgroundColor3 = Color3.fromRGB(110, 30, 30)
-		iniciarDsync()
+		ligarDsync()
 	else
 		botao.Text = "DSYNC OFF"
 		botao.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-		pararDsync()
+		desligarDsync()
 	end
 end)
