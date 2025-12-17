@@ -1,111 +1,46 @@
--- =====================================================
--- SERVIÇOS
--- =====================================================
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
 
-local PLACE_ID = game.PlaceId
-local REMOTE_NAME = "EntrarServidorPrivado"
+local function criarESP(player)
+	if player == LocalPlayer then return end
 
--- =====================================================
--- REMOTEEVENT (NOME FIXO, SEM ACENTOS)
--- =====================================================
-local remote = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
+    local function adicionar(character)
+		local head = character:WaitForChild("Head", 5)
+		if not head then return end
 
-if remote == nil then
-	remote = Instance.new("RemoteEvent")
-	remote.Name = REMOTE_NAME
-	remote.Parent = ReplicatedStorage
+		-- evita duplicar
+		if head:FindFirstChild("ESP") then return end
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "ESP"
+		billboard.Adornee = head
+		billboard.Size = UDim2.new(0, 200, 0, 40)
+		billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Parent = head
+
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.new(1, 0, 1, 0)
+		text.BackgroundTransparency = 1
+		text.TextScaled = true
+		text.TextStrokeTransparency = 0
+		text.TextColor3 = Color3.fromRGB(255, 80, 80)
+		text.Font = Enum.Font.GothamBold
+		text.Text = player.Name
+		text.Parent = billboard
+	end
+
+	if player.Character then
+		adicionar(player.Character)
+	end
+
+	player.CharacterAdded:Connect(adicionar)
 end
 
--- =====================================================
--- TELEPORTE (SERVIDOR)
--- =====================================================
-remote.OnServerEvent:Connect(function(player, codigoPrivado)
-	if typeof(player) ~= "Instance" then
-		return
-	end
+-- aplica nos jogadores atuais
+for _, player in ipairs(Players:GetPlayers()) do
+	criarESP(player)
+end
 
-	if typeof(codigoPrivado) ~= "string" then
-		return
-	end
-
-	-- remove espaços, quebras de linha e caracteres invisíveis
-	codigoPrivado = string.gsub(codigoPrivado, "%s+", "")
-
-	-- códigos reais têm tamanho mínimo
-	if #codigoPrivado < 10 then
-		return
-	end
-
-	pcall(function()
-		TeleportService:TeleportToPrivateServer(
-			PLACE_ID,
-			codigoPrivado,
-			{ player }
-		)
-	end)
-end)
-
--- =====================================================
--- FUNÇÃO DE CRIAÇÃO DA GUI
--- =====================================================
-local function criarInterface(player)
-	if player == nil then
-		return
-	end
-
-	local playerGui = player:WaitForChild("PlayerGui", 10)
-	if playerGui == nil then
-		return
-	end
-
-	if playerGui:FindFirstChild("EntrarServidorPrivadoGUI") then
-		return
-	end
-
-	-- ScreenGui
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "EntrarServidorPrivadoGUI"
-	screenGui.ResetOnSpawn = false
-	screenGui.Enabled = true
-	screenGui.Parent = playerGui
-
-	-- Frame principal
-	local frame = Instance.new("Frame")
-	frame.Name = "Container"
-	frame.Size = UDim2.new(0, 320, 0, 140)
-	frame.Position = UDim2.new(0.5, -160, 0.5, -70)
-	frame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-	frame.BorderSizePixel = 0
-	frame.Parent = screenGui
-
-	local frameCorner = Instance.new("UICorner")
-	frameCorner.CornerRadius = UDim.new(0, 12)
-	frameCorner.Parent = frame
-
-	-- Título
-	local titulo = Instance.new("TextLabel")
-	titulo.Name = "Titulo"
-	titulo.Size = UDim2.new(1, -20, 0, 28)
-	titulo.Position = UDim2.new(0, 10, 0, 6)
-	titulo.BackgroundTransparency = 1
-	titulo.Text = "Entrar em servidor privado"
-	titulo.TextColor3 = Color3.fromRGB(235, 235, 235)
-	titulo.Font = Enum.Font.GothamMedium
-	titulo.TextScaled = true
-	titulo.Parent = frame
-
-	-- Caixa de texto
-	local caixaTexto = Instance.new("TextBox")
-	caixaTexto.Name = "TextBox"
-	caixaTexto.Size = UDim2.new(1, -20, 0, 36)
-	caixaTexto.Position = UDim2.new(0, 10, 0, 44)
-	caixaTexto.PlaceholderText = "Link do seu servidor"
-	caixaTexto.Text = ""
-	caixaTexto.ClearTextOnFocus = false
-	caixaTexto.TextScaled = true
-	caixaTexto.Font = Enum.Font.Gotham
-	caixaTexto.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	caixaText
+-- aplica nos que entrarem
+Players.PlayerAdded:Connect(criarESP)
