@@ -1,6 +1,6 @@
 -- =====================================================
--- DSYNC PESADO (PROXY + BUFFER)
--- ESTILO USADO EM JOGOS TIPO BRAINROT
+-- DSYNC EXTREMO (LIMITE VISUAL DA ENGINE)
+-- NÃO É EXPLOIT - ILUSÃO MÁXIMA
 -- =====================================================
 
 local Players = game:GetService("Players")
@@ -9,20 +9,26 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- ================= CONFIG =================
+-- ================= CONFIG MÁXIMA =================
 
-local ATRASO = 0.35 -- segundos de "lag" visual
-local dsyncAtivo = false
+local ATRASO_MIN = 1.2
+local ATRASO_MAX = 2.0
+
+local FREEZE_CHANCE = 0.6
+local FREEZE_TIME_MIN = 0.3
+local FREEZE_TIME_MAX = 0.8
 
 -- ================= ESTADO =================
 
+local ativo = false
 local proxy = nil
 local buffer = {}
-local conexao = nil
+local conn = nil
+local ultimoFreeze = 0
 
--- ================= FUNÇÕES =================
+-- ================= UTIL =================
 
-local function invisivel(char, estado)
+local function setInvisivel(char, estado)
 	for _, v in ipairs(char:GetDescendants()) do
 		if v:IsA("BasePart") then
 			v.LocalTransparencyModifier = estado and 1 or 0
@@ -32,12 +38,15 @@ end
 
 local function criarProxy(char)
 	local clone = char:Clone()
-	clone.Name = "DsyncProxy"
+	clone.Name = "DsyncProxyExtreme"
 
 	for _, v in ipairs(clone:GetDescendants()) do
 		if v:IsA("BasePart") then
 			v.Anchored = true
 			v.CanCollide = false
+		end
+		if v:IsA("Humanoid") then
+			v:ChangeState(Enum.HumanoidStateType.Physics)
 		end
 	end
 
@@ -54,49 +63,55 @@ local function iniciar()
 	local root = char:WaitForChild("HumanoidRootPart")
 
 	proxy = criarProxy(char)
-	invisivel(char, true)
-
-	buffer = {}
-
+	setInvisivel(char, true)
 	camera.CameraSubject = proxy:FindFirstChild("Humanoid")
 
-	conexao = RunService.RenderStepped:Connect(function(dt)
+	buffer = {}
+	ultimoFreeze = os.clock()
+
+	conn = RunService.RenderStepped:Connect(function()
+		local agora = os.clock()
+
 		-- grava posição real
 		table.insert(buffer, {
-			time = os.clock(),
+			time = agora,
 			cframe = root.CFrame
 		})
 
-		-- aplica atraso
-		local alvo
+		-- freeze pesado
+		if agora - ultimoFreeze > 1 and math.random() < FREEZE_CHANCE then
+			local t = math.random() * (FREEZE_TIME_MAX - FREEZE_TIME_MIN) + FREEZE_TIME_MIN
+			task.wait(t)
+			ultimoFreeze = agora
+		end
+
+		-- atraso variável extremo
+		local atraso = math.random() * (ATRASO_MAX - ATRASO_MIN) + ATRASO_MIN
+		local alvo = nil
+
 		for i = 1, #buffer do
-			if os.clock() - buffer[i].time >= ATRASO then
+			if agora - buffer[i].time >= atraso then
 				alvo = buffer[i]
 			else
 				break
 			end
 		end
 
-		if alvo then
+		if alvo and proxy and proxy:FindFirstChild("HumanoidRootPart") then
 			proxy.HumanoidRootPart.CFrame = alvo.cframe
+		end
 
-			-- limpa buffer antigo
-			for i = 1, #buffer do
-				if buffer[i] == alvo then
-					for j = 1, i do
-						buffer[j] = nil
-					end
-					break
-				end
-			end
+		-- limpeza agressiva
+		while #buffer > 60 do
+			table.remove(buffer, 1)
 		end
 	end)
 end
 
 local function parar()
-	if conexao then
-		conexao:Disconnect()
-		conexao = nil
+	if conn then
+		conn:Disconnect()
+		conn = nil
 	end
 
 	if proxy then
@@ -106,7 +121,7 @@ local function parar()
 
 	local char = player.Character
 	if char then
-		invisivel(char, false)
+		setInvisivel(char, false)
 		camera.CameraSubject = char:FindFirstChild("Humanoid")
 	end
 end
@@ -118,26 +133,26 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(0, 160, 0, 36)
-btn.Position = UDim2.new(0, 20, 0.8, 0)
-btn.Text = "DSYNC OFF"
+btn.Size = UDim2.new(0, 180, 0, 38)
+btn.Position = UDim2.new(0, 18, 0.78, 0)
+btn.Text = "DSYNC EXTREMO OFF"
 btn.Font = Enum.Font.GothamBold
-btn.TextSize = 14
-btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+btn.TextSize = 13
+btn.BackgroundColor3 = Color3.fromRGB(15,15,15)
 btn.TextColor3 = Color3.fromRGB(230,230,230)
 btn.BorderSizePixel = 0
 btn.Parent = gui
 
 btn.MouseButton1Click:Connect(function()
-	dsyncAtivo = not dsyncAtivo
+	ativo = not ativo
 
-	if dsyncAtivo then
-		btn.Text = "DSYNC ON"
-		btn.BackgroundColor3 = Color3.fromRGB(120,30,30)
+	if ativo then
+		btn.Text = "DSYNC EXTREMO ON"
+		btn.BackgroundColor3 = Color3.fromRGB(140,20,20)
 		iniciar()
 	else
-		btn.Text = "DSYNC OFF"
-		btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+		btn.Text = "DSYNC EXTREMO OFF"
+		btn.BackgroundColor3 = Color3.fromRGB(15,15,15)
 		parar()
 	end
 end)
