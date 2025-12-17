@@ -1,46 +1,80 @@
+-- =====================================================
+-- SERVIÇOS
+-- =====================================================
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
-local function criarESP(player)
-	if player == LocalPlayer then return end
+local localPlayer = Players.LocalPlayer
 
-    local function adicionar(character)
+-- =====================================================
+-- FUNÇÃO PRINCIPAL DO ESP
+-- =====================================================
+local function criarESPParaJogador(player)
+	-- não cria ESP em si mesmo
+	if player == localPlayer then
+		return
+	end
+
+	-- =================================================
+	-- FUNÇÃO PARA APLICAR NO PERSONAGEM
+	-- =================================================
+	local function aplicarESP(character)
+		if character == nil then
+			return
+		end
+
 		local head = character:WaitForChild("Head", 5)
-		if not head then return end
+		if head == nil then
+			return
+		end
 
-		-- evita duplicar
-		if head:FindFirstChild("ESP") then return end
+		-- evita duplicação
+		if head:FindFirstChild("ESP") then
+			return
+		end
 
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "ESP"
-		billboard.Adornee = head
-		billboard.Size = UDim2.new(0, 200, 0, 40)
-		billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-		billboard.AlwaysOnTop = true
-		billboard.Parent = head
+		-- BillboardGui
+		local billboardGui = Instance.new("BillboardGui")
+		billboardGui.Name = "ESP"
+		billboardGui.Adornee = head
+		billboardGui.Size = UDim2.new(0, 200, 0, 40)
+		billboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
+		billboardGui.AlwaysOnTop = true
+		billboardGui.Parent = head
 
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.new(1, 0, 1, 0)
-		text.BackgroundTransparency = 1
-		text.TextScaled = true
-		text.TextStrokeTransparency = 0
-		text.TextColor3 = Color3.fromRGB(255, 80, 80)
-		text.Font = Enum.Font.GothamBold
-		text.Text = player.Name
-		text.Parent = billboard
+		-- Texto
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.BackgroundTransparency = 1
+		textLabel.TextScaled = true
+		textLabel.TextStrokeTransparency = 0
+		textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		textLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+		textLabel.Font = Enum.Font.GothamBold
+		textLabel.Text = player.Name
+		textLabel.Parent = billboardGui
 	end
 
+	-- se já tiver personagem
 	if player.Character then
-		adicionar(player.Character)
+		aplicarESP(player.Character)
 	end
 
-	player.CharacterAdded:Connect(adicionar)
+	-- reaplica ao respawn
+	player.CharacterAdded:Connect(function(character)
+		aplicarESP(character)
+	end)
 end
 
--- aplica nos jogadores atuais
+-- =====================================================
+-- APLICA PARA JOGADORES ATUAIS
+-- =====================================================
 for _, player in ipairs(Players:GetPlayers()) do
-	criarESP(player)
+	criarESPParaJogador(player)
 end
 
--- aplica nos que entrarem
-Players.PlayerAdded:Connect(criarESP)
+-- =====================================================
+-- APLICA PARA NOVOS JOGADORES
+-- =====================================================
+Players.PlayerAdded:Connect(function(player)
+	criarESPParaJogador(player)
+end)
