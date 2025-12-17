@@ -9,23 +9,35 @@ local PLACE_ID = game.PlaceId
 local REMOTE_NAME = "EntrarServidorPrivado"
 
 -- =====================================================
--- REMOTEEVENT (garantia)
+-- REMOTEEVENT (NOME FIXO, SEM ACENTOS)
 -- =====================================================
 local remote = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
-if not remote then
+
+if remote == nil then
 	remote = Instance.new("RemoteEvent")
 	remote.Name = REMOTE_NAME
 	remote.Parent = ReplicatedStorage
 end
 
 -- =====================================================
--- TELEPORTE (servidor)
+-- TELEPORTE (SERVIDOR)
 -- =====================================================
 remote.OnServerEvent:Connect(function(player, codigoPrivado)
-	if typeof(codigoPrivado) ~= "string" then return end
+	if typeof(player) ~= "Instance" then
+		return
+	end
 
-	codigoPrivado = codigoPrivado:gsub("%s+", "")
-	if #codigoPrivado < 10 then return end
+	if typeof(codigoPrivado) ~= "string" then
+		return
+	end
+
+	-- remove espaços, quebras de linha e caracteres invisíveis
+	codigoPrivado = string.gsub(codigoPrivado, "%s+", "")
+
+	-- códigos reais têm tamanho mínimo
+	if #codigoPrivado < 10 then
+		return
+	end
 
 	pcall(function()
 		TeleportService:TeleportToPrivateServer(
@@ -37,87 +49,63 @@ remote.OnServerEvent:Connect(function(player, codigoPrivado)
 end)
 
 -- =====================================================
--- FUNÇÃO QUE CRIA A GUI (ROBUSTA)
+-- FUNÇÃO DE CRIAÇÃO DA GUI
 -- =====================================================
-local function criarGui(player)
-	local playerGui = player:WaitForChild("PlayerGui", 10)
-	if not playerGui then return end
+local function criarInterface(player)
+	if player == nil then
+		return
+	end
 
-	-- evita duplicar
+	local playerGui = player:WaitForChild("PlayerGui", 10)
+	if playerGui == nil then
+		return
+	end
+
 	if playerGui:FindFirstChild("EntrarServidorPrivadoGUI") then
 		return
 	end
 
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "EntrarServidorPrivadoGUI"
-	gui.ResetOnSpawn = false
-	gui.Enabled = true
-	gui.Parent = playerGui
+	-- ScreenGui
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "EntrarServidorPrivadoGUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.Enabled = true
+	screenGui.Parent = playerGui
 
+	-- Frame principal
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0, 420, 0, 190)
-	frame.Position = UDim2.new(0.5, -210, 0.5, -95)
-	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.Name = "Container"
+	frame.Size = UDim2.new(0, 320, 0, 140)
+	frame.Position = UDim2.new(0.5, -160, 0.5, -70)
+	frame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 	frame.BorderSizePixel = 0
-	frame.Parent = gui
+	frame.Parent = screenGui
 
-	local box = Instance.new("TextBox")
-	box.Name = "TextBox"
-	box.Size = UDim2.new(1, -20, 0, 50)
-	box.Position = UDim2.new(0, 10, 0, 25)
-	box.PlaceholderText = "Cole o link ou código do servidor privado"
-	box.Text = ""
-	box.TextScaled = true
-	box.ClearTextOnFocus = false
-	box.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-	box.TextColor3 = Color3.fromRGB(255, 255, 255)
-	box.Parent = frame
+	local frameCorner = Instance.new("UICorner")
+	frameCorner.CornerRadius = UDim.new(0, 12)
+	frameCorner.Parent = frame
 
-	local button = Instance.new("TextButton")
-	button.Name = "TextButton"
-	button.Size = UDim2.new(1, -20, 0, 50)
-	button.Position = UDim2.new(0, 10, 0, 110)
-	button.Text = "ENTRAR NO SERVIDOR"
-	button.TextScaled = true
-	button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Parent = frame
+	-- Título
+	local titulo = Instance.new("TextLabel")
+	titulo.Name = "Titulo"
+	titulo.Size = UDim2.new(1, -20, 0, 28)
+	titulo.Position = UDim2.new(0, 10, 0, 6)
+	titulo.BackgroundTransparency = 1
+	titulo.Text = "Entrar em servidor privado"
+	titulo.TextColor3 = Color3.fromRGB(235, 235, 235)
+	titulo.Font = Enum.Font.GothamMedium
+	titulo.TextScaled = true
+	titulo.Parent = frame
 
-	local localScript = Instance.new("LocalScript")
-	localScript.Source = [[
-		local ReplicatedStorage = game:GetService("ReplicatedStorage")
-		local remote = ReplicatedStorage:WaitForChild("EntrarServidorPrivado")
-
-		local frame = script.Parent
-		local box = frame:WaitForChild("TextBox")
-		local button = frame:WaitForChild("TextButton")
-
-		local function extrairCodigo(texto)
-			local codigo = string.match(texto, "privateServerLinkCode=([%w%-]+)")
-			if not codigo then
-				codigo = texto
-			end
-			return codigo
-		end
-
-		button.MouseButton1Click:Connect(function()
-			if box.Text == "" then return end
-			remote:FireServer(extrairCodigo(box.Text))
-		end)
-	]]
-	localScript.Parent = frame
-end
-
--- =====================================================
--- GARANTIA ABSOLUTA DE EXECUÇÃO
--- =====================================================
-Players.PlayerAdded:Connect(function(player)
-	-- cria quando entrar
-	criarGui(player)
-
-	-- cria novamente se o personagem respawnar
-	player.CharacterAdded:Connect(function()
-		task.wait(1)
-		criarGui(player)
-	end)
-end)
+	-- Caixa de texto
+	local caixaTexto = Instance.new("TextBox")
+	caixaTexto.Name = "TextBox"
+	caixaTexto.Size = UDim2.new(1, -20, 0, 36)
+	caixaTexto.Position = UDim2.new(0, 10, 0, 44)
+	caixaTexto.PlaceholderText = "Link do seu servidor"
+	caixaTexto.Text = ""
+	caixaTexto.ClearTextOnFocus = false
+	caixaTexto.TextScaled = true
+	caixaTexto.Font = Enum.Font.Gotham
+	caixaTexto.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	caixaText
